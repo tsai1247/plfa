@@ -183,10 +183,10 @@ _ = refl
 
 
 to   : ℕ → Bin
-to zero = ⟨⟩ O
+to zero = ⟨⟩
 to (suc m) = inc (to m)
 
-_ : to 0 ≡ ⟨⟩ O
+_ : to 0 ≡ ⟨⟩
 _ = refl
 
 _ : to 1 ≡ ⟨⟩ I
