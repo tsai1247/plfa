@@ -5,8 +5,8 @@ open  import  Data.Nat  using  ( ℕ ; zero ; suc ; _+_ ; _*_ )
 open  import  Data.Nat.Properties  using  ( +-comm )
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl)
-open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _∎)
+open Eq using (_≡_; refl; cong; sym)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
 
 -----------------------------------
 -- Naturals
@@ -15,9 +15,6 @@ data Bin : Set where
   ⟨⟩ : Bin
   _O : Bin → Bin
   _I : Bin → Bin
-
-postulate
-  bin-identity : ⟨⟩ O ≡ ⟨⟩
 
 inc : Bin → Bin
 inc ⟨⟩ = ⟨⟩ I
@@ -41,21 +38,10 @@ bin-low₁ ⟨⟩ = refl
 bin-low₁ (b O) rewrite +-comm (from b * 2) 1 = refl
 bin-low₁ (b I) rewrite bin-low₁ b | +-comm (from b * 2) 1 = refl
 
-bin-low₂₀ : ∀ (b : Bin) → from (b I) ≡ from (b O) + 1
-bin-low₂₀ b = refl
-
-bin-low₂₁ : ∀ (n : ℕ) → to (n * 2) ≡ (to n) O
-bin-low₂₁ zero rewrite bin-identity = refl
-bin-low₂₁ (suc n) rewrite bin-low₂₁ n = refl
-
-bin-low₂₂ :  ∀ (n : ℕ) → to (n * 2 + 1) ≡ (to n) I
-bin-low₂₂ n rewrite +-comm (n * 2) 1 | bin-low₂₁ n = refl
-
+{-
 bin-low₂ : ∀ (b : Bin) → to (from b) ≡ b
-bin-low₂ ⟨⟩ = refl
-bin-low₂ (b O) rewrite bin-low₂₁ (from b) | bin-low₂ b = refl
-bin-low₂ (b I) rewrite bin-low₂₂ (from b) | bin-low₂ b = refl
-
+bin-low₂ 反例: b ≡ ⟨⟩ O → to (from (⟨⟩ O)) = to 0 = ⟨⟩ ̸= b
+-}
 
 bin-low₃₁ : ∀ (b : Bin) → from (inc b) ≡ suc (from b)
 bin-low₃₁ ⟨⟩ = refl
@@ -69,25 +55,57 @@ bin-low₃ (suc n) rewrite bin-low₃₁ (to n) | bin-low₃ n = refl
 --------------------------------
 -- Relations
 
-data 0ne : Bin → Set
 
 data Can : Bin → Set
-  
+data 0ne : Bin → Set
+
 data 0ne where
   ⟨⟩I : 0ne (⟨⟩ I)
   apd₀ : ∀{b : Bin}
-    → 0ne b → 0ne (b O)
+    → 0ne (b O) → 0ne b
 
   apd₁ : ∀{b : Bin}
-    → 0ne b → 0ne (b I)
+    → 0ne (b I) → 0ne (b)
 
 data Can where
-  ⟨⟩O : Can (⟨⟩ O)
+  ⟨⟩None : Can ⟨⟩
   1ne : ∀ {b : Bin} → 0ne b → Can b
 
 can-inc : ∀ {b : Bin}
   → Can b → Can (inc b)
 
-can-inc {⟨⟩} b = 1ne ⟨⟩I
-can-inc {b₁ O} b = 1ne {!   !}
-can-inc {b₁ I} b = {!   !}
+can-inc canb = {!   !}
+
+can-to_n : ∀ {n : ℕ}
+  → Can (to n)
+
+can-to_n {zero} = ⟨⟩None
+can-to_n {suc n} = can-inc {to n} (can-to_n {n})
+
+can-to∘from_b : ∀ {b : Bin}
+  → Can b → to (from b) ≡ b
+
+can-to∘from_b {⟨⟩} canb = refl
+can-to∘from_b {b O} canb = {!   !}  
+
+can-to∘from_b {b I} canb = {!   !}
+
+--------------------------------
+-- Isomorphism
+
+infix 0 _≲_
+record _≲_ (A B : Set) : Set where
+  field
+    ≲to      : A → B
+    ≲from    : B → A
+    ≲from∘to : ∀ (x : A) → ≲from (≲to x) ≡ x
+open _≲_
+
+Bin-embedding : ℕ ≲ Bin
+Bin-embedding = 
+  record
+  {
+    ≲to      = to;
+    ≲from    = from;
+    ≲from∘to = bin-low₃
+  }
