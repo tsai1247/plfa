@@ -145,11 +145,13 @@ record ⊤′ : Set where
   constructor tt′
 
 η-⊤′ : ∀(w : ⊤′) → tt′ ≡ w
-η-⊤′ w = refl -- ??????
+η-⊤′ tt′ = refl
+-- c-c c-d
 
 truth′ : ⊤′ 
-truth′ = _
+truth′ = tt′
 -- 可能知道 _ 的值嗎？
+--  c-c c-n
 
 ⊤-count : ⊤ → ℕ
 ⊤-count tt = 1
