@@ -2,11 +2,12 @@ module plfa.part1.Bins where
 {- OPTIONS --exact-split -}
 
 open  import  Data.Nat  using  ( ℕ ; zero ; suc ; _+_ ; _*_ ) 
-open  import  Data.Nat.Properties  using  ( +-comm )
+open  import  Data.Nat.Properties  using  ( +-comm ; *-comm)
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; step-≡; _∎)
+open import plfa.part1.Relations using (_<_ ; _≤_)
 
 -----------------------------------
 -- Naturals
@@ -62,19 +63,32 @@ data 0ne : Bin → Set
 data 0ne where
   ⟨⟩I : 0ne (⟨⟩ I)
   apd₀ : ∀{b : Bin}
-    → 0ne (b O) → 0ne b
+    → 0ne b → 0ne (b O)
 
   apd₁ : ∀{b : Bin}
-    → 0ne (b I) → 0ne (b)
+    → 0ne b → 0ne (b I)
 
 data Can where
   ⟨⟩None : Can ⟨⟩
   1ne : ∀ {b : Bin} → 0ne b → Can b
 
+0ne-inc : ∀ {b : Bin}
+  → 0ne b → 0ne (inc b)
+0ne-inc {b O} (apd₀ 0neb) = apd₁ 0neb
+0ne-inc {⟨⟩ I} ⟨⟩I = apd₀ ⟨⟩I
+0ne-inc {b I} (apd₁ 0neb) = apd₀ (0ne-inc 0neb)
+
+0ne-can-inc : ∀ {b : Bin}
+  → 0ne b → Can (inc b)
+0ne-can-inc {b O} (apd₀ 0neb) = 1ne (apd₁ 0neb)
+0ne-can-inc {⟨⟩ I} ⟨⟩I = 1ne (apd₀ ⟨⟩I)
+0ne-can-inc {b I} (apd₁ 0neb) = 1ne (apd₀ (0ne-inc 0neb))
+
 can-inc : ∀ {b : Bin}
   → Can b → Can (inc b)
 
-can-inc canb = {!   !}
+can-inc {⟨⟩} ⟨⟩None = 1ne ⟨⟩I
+can-inc (1ne x) = 1ne (0ne-inc x)
 
 can-to_n : ∀ {n : ℕ}
   → Can (to n)
@@ -82,13 +96,42 @@ can-to_n : ∀ {n : ℕ}
 can-to_n {zero} = ⟨⟩None
 can-to_n {suc n} = can-inc {to n} (can-to_n {n})
 
+open _≤_
+
+1<n*2 : ∀ {n : ℕ}
+  → 1 ≤ n → 1 ≤ n * 2
+1<n*2 {suc n} 1≤n = s≤s z≤n
+
+0ne>0 : ∀ {b : Bin}
+  → 0ne b → 1 ≤ from b
+0ne>0 {⟨⟩ I} ⟨⟩I = s≤s z≤n
+
+0ne>0 {b O} (apd₀ 0neb) = 1<n*2 {from b} (0ne>0 0neb)
+0ne>0 {b I} (apd₁ 0neb) rewrite +-comm (from b * 2) 1 = s≤s z≤n
+
+*-to : ∀ {n : ℕ}
+  → 1 ≤ n → to (n * 2) ≡ (to n) O
+*-to {zero} ()
+*-to {suc zero} z≤s = refl
+*-to {suc (suc n)} (s≤s z≤s) = cong inc (cong inc (*-to {suc n} (s≤s z≤n) ))
+
+0ne-to∘from_b : ∀ {b : Bin}
+  → 0ne b → to (from b) ≡ b
+0ne-to∘from_b {b O} (apd₀ 0neb) rewrite *-to {from b} (0ne>0 0neb)
+                                | 0ne-to∘from_b 0neb = refl
+0ne-to∘from_b {⟨⟩ I} ⟨⟩I = refl
+0ne-to∘from_b {b I} (apd₁ 0neb) rewrite +-comm (from b * 2) 1 
+                                | *-to {from b} (0ne>0 0neb)
+                                | 0ne-to∘from_b 0neb = refl
+
 can-to∘from_b : ∀ {b : Bin}
   → Can b → to (from b) ≡ b
 
 can-to∘from_b {⟨⟩} canb = refl
-can-to∘from_b {b O} canb = {!   !}  
-
-can-to∘from_b {b I} canb = {!   !}
+can-to∘from_b {⟨⟩ O} (1ne (apd₀ ()))
+-- can-to∘from_b {⟨⟩ O} (1ne x) = {!   !}
+can-to∘from_b {b} (1ne x) = 0ne-to∘from_b x
+-- 先在紙上證明，再改成code
 
 --------------------------------
 -- Isomorphism
@@ -109,3 +152,4 @@ Bin-embedding =
     ≲from    = from;
     ≲from∘to = bin-low₃
   }
+ 
