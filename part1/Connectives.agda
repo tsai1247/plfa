@@ -151,7 +151,7 @@ record ⊤′ : Set where
 truth′ : ⊤′ 
 truth′ = tt′
 -- 可能知道 _ 的值嗎？
---  c-c c-n
+--  c-c c-n (對前面的truth′)
 
 ⊤-count : ⊤ → ℕ
 ⊤-count tt = 1
