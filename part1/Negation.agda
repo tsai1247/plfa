@@ -83,10 +83,8 @@ open Trichotomy
 
 trichotomy₁ : ∀(m n : ℕ)
   → m < n → ¬ m ≡ n 
-trichotomy₁ zero zero ()
-trichotomy₁ zero (suc n) z<s ()
-trichotomy₁ (suc m) zero ()
-trichotomy₁ (suc m) (suc .m) (s<s _m<n) refl = {!   !}
+trichotomy₁ (suc m) .(suc _) (s<s _m<n) refl = <-irreflexive m _m<n
+-- given m n m<n m≡n, use ¬ (m < m) to get ⊥
 
 trichotomy₂ : ∀(m n : ℕ)
   → m < n → ¬ n < m
@@ -95,17 +93,11 @@ trichotomy₂ (suc m) (suc n) (s<s _m<n) (s<s _n<m) = trichotomy₂ m n _m<n _n<
 
 trichotomy₃ : ∀(m n : ℕ)
   → m ≡ n → ¬ m < n
-trichotomy₃ zero zero refl ()
-trichotomy₃ zero (suc n) ()
-trichotomy₃ (suc m) zero ()
-trichotomy₃ (suc m) (suc .m) refl (s<s _m<n) = {!   !}
+trichotomy₃ (suc m) .(suc _) refl (s<s _m<n) = <-irreflexive m _m<n
 
 trichotomy₄ : ∀(m n : ℕ)
   → m ≡ n → ¬ n < m
-trichotomy₄ zero zero refl ()
-trichotomy₄ zero (suc n) ()
-trichotomy₄ (suc m) zero ()
-trichotomy₄ (suc m) (suc .m) refl (s<s _n<m) = {!   !}
+trichotomy₄ .(suc _) (suc n) refl (s<s _n<m) = <-irreflexive n _n<m
 
 trichotomy₅ : ∀(m n : ℕ)
   → n < m → ¬ m < n
@@ -114,19 +106,15 @@ trichotomy₅ zero (suc n) ()
 trichotomy₅ (suc m) zero z<s ()
 trichotomy₅ (suc m) (suc n) (s<s _n<m) (s<s _m<n) = trichotomy₅ m n _n<m _m<n
 
-suc_refl : ∀(m n : ℕ)
-  → (suc m) ≡ (suc n) → m ≡ n
-suc zero refl zero sm≡sn = refl
-suc zero refl (suc n) ()
-suc (suc m) refl zero ()
-suc (suc m) refl (suc n) sm≡sn = {!   !}
-
 trichotomy₆ : ∀(m n : ℕ)
   → n < m → ¬ m ≡ n
-trichotomy₆ zero zero ()
-trichotomy₆ zero (suc n) ()
-trichotomy₆ (suc m) zero z<s ()
-trichotomy₆ (suc m) (suc n) (s<s _n<m) refl = {!   !}
+trichotomy₆ (suc m) .(suc _) (s<s _n<m) refl = <-irreflexive m _n<m
+
+⊎-dual-×-from : ∀ {A B : Set}
+  →  (¬ A) × (¬ B) → ¬ (A ⊎ B)
+⊎-dual-×-from (fst , snd) (inj₁ x) = fst x
+⊎-dual-×-from (fst , snd) (inj₂ y) = snd y
+
 
 ⊎-dual-× : ∀ {A B : Set}
   → ¬ (A ⊎ B) ≃ (¬ A) × (¬ B)
@@ -134,23 +122,42 @@ trichotomy₆ (suc m) (suc n) (s<s _n<m) refl = {!   !}
   record
   {
     to = λ {
-      x → {!   !}
+      f → (λ { 
+            a → f (inj₁ a)
+          }), 
+          (λ {
+            b → f (inj₂ b)
+          })
     };
     from = λ {
-      ¬( inj₁  A ) → proj₁ ¬ A;
-      ¬( inj₂  B ) → proj₂ ¬ B
+      (fst , snd) → λ {
+        (inj₁ x) → fst x
+      ; (inj₂ y) → snd y
+      }
+    };
+    
+    from∘to = λ {
+      f → extensionality λ {
+        (inj₁ x) → refl
+      ; (inj₂ y) → refl
+      }
     };
     to∘from = λ {
-      x → {!   !}
-    };
-    from∘to = λ {
-      x → {!   !}
+      (fst , snd) → refl
     }
   } 
 
 ×-dual-⊎ : ∀ {A B : Set}
-  → ¬ (A × B) ≃ (¬ A) ⊎ (¬ B)
-×-dual-⊎ = {!   !}
+  → (¬ A) ⊎ (¬ B) → ¬ (A × B)
+×-dual-⊎ (inj₁ na) = λ {
+    a×b → na (proj₁ a×b)
+  }
+×-dual-⊎ (inj₂ nb) = λ {
+    a×b → nb (proj₂ a×b)
+  }
+      
+
+-- 應該不成立，要給出一個比同構更弱的關係將兩邊關聯起來
 
 -- 海廷邏輯 (直覺)
 postulate
@@ -181,9 +188,19 @@ neg_stable A nnnA = ¬¬¬-elim nnnA
   }
 
 
-×-stable : ∀(A B : Set)
+×-stable : ∀{A B : Set}
   → Stable A → Stable B → Stable (A × B)
-×-stable = {!   !}
+×-stable sa sb nna×b = ( sa (λ {
+    na → nna×b λ {
+      a×b → na (proj₁ a×b)
+    }
+  }),
+  sb (λ {
+    nb → nna×b λ {
+      a×b → nb (proj₂ a×b)
+    }
+  }))
 
 -- × == conjective  == 合取
 -- ⊎ == disjunctive == 析取
+   
