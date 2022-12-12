@@ -1,17 +1,17 @@
 module  plfa.part1.Quantifiers  where
 import  Relation.Binary.PropositionalEquality  as  Eq 
 open  Eq  using (_≡_; refl; cong; cong-app ; sym)
+open  Eq.≡-Reasoning 
 open  import  Data.Nat  using  ( ℕ ;  zero ;  suc ;  _+_ ;  _*_ ) 
-open  import  Data.Nat.Properties  using  ( +-comm ; *-comm ;  +-identityʳ )
+open  import  Data.Nat.Properties  using  ( +-comm ; +-suc ; +-assoc ; *-comm ;  +-identityʳ )
 open  import  Relation.Nullary  using  ( ¬_ ) 
 open  import  Data.Product  using  ( _×_ ;  proj₁ ;  proj₂)  renaming  ( _,_  to  ⟨_,_⟩) 
 open  import  Data.Sum  using  ( _⊎_ ;  inj₁ ;  inj₂ ) 
-open  import  plfa.part1.Isomorphism  using  ( _≃_ ;  extensionality ) 
+open  import  plfa.part1.Isomorphism  using  ( _≃_ ) 
 open  import  Function  using  ( _∘_ )
 open import  Data.Nat  using  ( _≤_ ;  z≤n ;  s≤s ) 
-open import  Data.Nat.Properties  using  ( ≤-refl ;  ≤-trans ;  ≤-antisym ;  ≤-total ; 
+open import  Data.Nat.Properties  using  ( ≤-refl ;  ≤-trans ;  ≤-antisym ;  ≤-total ; ≤-reflexive ;
                                   +-monoʳ-≤ ;  +-monoˡ-≤ ;  +-mono-≤ )
-
 
 ∀-elim  :  ∀  { A  :  Set }  { B  :  A  →  Set } 
   →  ( L  :  ∀  ( x  :  A )  →  B  x ) 
@@ -20,26 +20,34 @@ open import  Data.Nat.Properties  using  ( ≤-refl ;  ≤-trans ;  ≤-antisym 
   →  B  M 
 ∀-elim  L  M  =  L  M
 
-η-× : ∀{A B : Set} (w : A × B ) → ⟨ proj₁ w , proj₂ w ⟩ ≡ w
-η-× ⟨ x , y ⟩ = refl
+postulate
+  extensionality : ∀ {A B : Set} {f g : A → B}
+    → (∀ (x : A) → f x ≡ g x) → f ≡ g
+    
+postulate
+  extensionality₂ : ∀ {A : Set} {P : A → Set} {F G : ( ∀(a : A) → (P a) )} -- B a × C a
+    → (∀(x : A) → F x ≡ G x) → F ≡ G
 
-∀-distrib-×  :  ∀  { A  :  Set }  { B  C  :  A  →  Set }
+∀-distrib-×  :  ∀  { A  :  Set } { B C : A → Set }
   → (∀(a : A) → (B a) × (C a) ) ≃ (∀(x : A) → B x) × (∀ (x : A) → C x)
 ∀-distrib-× = record
   {
     to = λ {
-        x → ⟨ proj₁ ∘ x , proj₂ ∘ x ⟩
+        f → ⟨ proj₁ ∘ f , proj₂ ∘ f ⟩
     };
     from = λ {
       ⟨ g , h ⟩ → λ {
         x → ⟨ g x , h x ⟩
       }
     };
+    from∘to = λ{
+      f → extensionality₂ λ {
+        x → refl
+      }
+
+    };
     to∘from = λ {
       ⟨ g , h ⟩ → refl
-    };
-    from∘to = λ{
-      f → {!   !}
     }
   }
 
@@ -74,8 +82,13 @@ data Tri  :  Set  where
       ⟨ Baa , ⟨ Bbb , Bcc ⟩ ⟩ → refl
     };
     from∘to = λ {
-      x → {!   !}
+      x → extensionality₂ λ {
+        aa → refl;
+        bb → refl;
+        cc → refl
+      }
     }
+    -- 已經知道所有element都滿足，但不知道怎麼寫
   }
 
 data Σ  ( A  :  Set )  ( B  :  A  →  Set )  :  Set  where
@@ -89,6 +102,8 @@ record Σ′  ( A  :  Set )  ( B  :  A  →  Set )  :  Set  where
   field
     proj₁′  :  A
     proj₂′  :  B  proj₁′
+    
+open Σ′
 
 ∃  :  ∀  { A  :  Set }  ( B  :  A  →  Set )  →  Set 
 ∃  { A }  B  =  Σ  A  B
@@ -202,7 +217,6 @@ odd-∃  ( odd-suc  e )   with  even-∃  e
 
 ∃-even  ⟨   zero  ,  refl  ⟩  =  even-zero 
 ∃-even  ⟨  suc m  ,  refl  ⟩  =  even-suc  (∃-odd ⟨ m , refl ⟩) 
-
 ∃-odd   ⟨      m  ,  refl  ⟩  =  odd-suc  (∃-even ⟨ m , refl ⟩)
 
 +-suc-distrib : ∀ (m n : ℕ)
@@ -210,30 +224,39 @@ odd-∃  ( odd-suc  e )   with  even-∃  e
 +-suc-distrib zero n = refl
 +-suc-distrib (suc m) n = cong suc (+-suc-distrib m n)
 
-∃-even₁ : ∀  { n  :  ℕ }  →  ∃[  m  ]  (     2 * m  ≡  n )      →  even  n
-∃-odd₁  : ∀  { n  :  ℕ }  →  ∃[  m  ]  ( 1  +  2  *  m  ≡  n )  →   odd  n
+-- ∃-even₁ : ∀  { n  :  ℕ }  →  ∃[  m  ]  (     2 * m  ≡  n )      →  even  n
+-- ∃-odd₁  : ∀  { n  :  ℕ }  →  ∃[  m  ]  ( 1  +  2  *  m  ≡  n )  →   odd  n
 
-∃-even₁ ⟨  zero , refl ⟩ = even-zero
-∃-even₁ ⟨ suc m , refl ⟩ = even-suc (∃-odd₁ ⟨ m , {!   !} ⟩)
-∃-odd₁  ⟨     m , refl ⟩ = odd-suc (∃-even₁ ⟨ m , refl ⟩) 
+-- ∃-even₁ ⟨  zero , refl ⟩ = even-zero
+-- ∃-even₁ ⟨ suc m , refl ⟩ = even-suc (∃-odd₁ ⟨ m , +-suc-distrib m (m + zero) ⟩) -- 無法填寫(Termination checking failed)
+-- ∃-odd₁  ⟨     m , refl ⟩ = odd-suc (∃-even₁ ⟨ m , refl ⟩) 
 
-∃-+-≤ : ∀ (x y z : ℕ)
+∃-+-≤-to : ∀ {y z : ℕ}
+  → (∃[ x ] ( x + y ≡ z )) → (y ≤ z)
+∃-+-≤-to {zero} {z} ⟨ x , x₁ ⟩ = z≤n
+∃-+-≤-to {suc y} {.(zero + suc y)} ⟨ zero , refl ⟩ = ≤-reflexive refl
+∃-+-≤-to {suc y} {.(suc x + suc y)} ⟨ suc x , refl ⟩ rewrite +-suc x y = s≤s (∃-+-≤-to {y} {suc x + y} ⟨ suc x , refl ⟩)
+
+∃-+-≤-from-helper : ∀ {y z : ℕ}
+  → (∃[ x ] ( x + y ≡ z )) → (∃[ x ] ( x + (suc y) ≡ (suc z) )) 
+∃-+-≤-from-helper {y} {z} ⟨ x , refl ⟩ = ⟨ x , +-suc x y ⟩
+
+∃-+-≤-from : ∀ {y z : ℕ}
+  → (y ≤ z) → (∃[ x ] ( x + y ≡ z )) 
+∃-+-≤-from {y} {z} z≤n = ⟨ z , +-identityʳ z ⟩
+∃-+-≤-from {suc y} {suc z} (s≤s zz) = ∃-+-≤-from-helper (∃-+-≤-from zz) 
+
+∃-+-≤ : ∀ {x y z : ℕ}
   → (∃[ x ] ( x + y ≡ z )) ≃ (y ≤ z)
-∃-+-≤ x y z = record {
-    to = λ {
-      ⟨ zero , xy≡z ⟩ → {!   !}
-    ; ⟨ suc x , xy≡z ⟩ → {!   !}
-    };
-    from = λ {
-      z≤n → ⟨ z , +-identityʳ z ⟩
-    ; (s≤s z≤n) → {!   !}
-    ; (s≤s (s≤s x)) → ⟨ {!   !} , {!   !} ⟩
-    };
+
+∃-+-≤ {x} {y} {z} = record {
+    to = ∃-+-≤-to;
+    from = ∃-+-≤-from;
     from∘to = λ {
-      x → {!   !}
+      ⟨ x , refl ⟩ → {!   !}
     };
     to∘from = λ {
-      x → {!   !}
+      y≤z → {!   !}
     }
   }
 
@@ -254,10 +277,9 @@ odd-∃  ( odd-suc  e )   with  even-∃  e
 -- (ba) x 可以得到 bx, 與 ¬bx 矛盾
 
 
-¬∀-implies-∃¬  :  ∀  { A  :  Set }  { B  :  A  →  Set } 
-  →  ¬  (∀  x  →  B  x )  →  ∃[  x  ]  ( ¬  B  x ) 
-¬∀-implies-∃¬ a = {!  !}
--- 似乎不成立?
+-- ¬∀-implies-∃¬  :  ∀  { A  :  Set }  { B  :  A  →  Set } 
+  -- →  ¬  (∀  x  →  B  x )  →  ∃[  x  ]  ( ¬  B  x ) 
+-- 直覺邏輯認為，必須要確定是哪一個 x 使得(¬ B x)，而 ¬  (∀  x  →  B  x ) 的證據不足以讓我們得到確定的 x
 
 open import plfa.part1.Bins using ( Bin ; 0ne ; Can )
 open import plfa.part1.Bins using ( can-to_n ; inc ; can-to∘from_b ; bin-low₃ ) 
@@ -295,6 +317,7 @@ N≃∃b b = record
       x → bin-low₃ x
     };
     to∘from = λ {
-      x → {!   !}
+      ⟨ x , x₁ ⟩ → {!   !}
     }
+    
   }
